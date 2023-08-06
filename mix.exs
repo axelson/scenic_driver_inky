@@ -25,10 +25,13 @@ defmodule ScenicDriverInky.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:scenic, "~> 0.11.0-beta.0"},
-      {:scenic_driver_local, "~> 0.11.0-beta.0", targets: @pi_targets},
+      # {:data_tracer, github: "axelson/data_tracer"},
+      {:data_tracer, path: "~/dev/data_tracer"},
+      {:scenic, "~> 0.11"},
+      {:scenic_driver_local, "~> 0.11", targets: @pi_targets},
       {:rpi_fb_capture, "~> 0.1", targets: @pi_targets},
-      {:inky, "~> 1.0.0"},
+      # {:inky, "~> 1.0.0"},
+      {:inky, path: "~/dev/forks/inky"},
       {:ex_doc, ">= 0.0.0", only: :dev}
     ]
   end

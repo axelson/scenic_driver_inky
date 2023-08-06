@@ -63,7 +63,24 @@ config :sample_scenic_inky, :viewport,
       opts: [type: :impression, color_low: 120, dithering: false]
     ]
   ]
+
+# Example for the Impression 7.3":
+config :sample_scenic_inky, :viewport,
+  name: :main_viewport,
+  default_scene: {SampleScenicInky.Scene.Main, nil},
+  size: {800, 480},
+  opts: [scale: 1.0],
+  drivers: [
+    [
+      module: Scenic.Driver.Local,
+    ],
+    [
+      module: ScenicDriverInky,
+      opts: [type: :impression_7_3, color_low: 120, dithering: false]
+    ]
+  ]
 ```
+
 
 Note: It is important to configure the ScenicLocalDriver because ScenicDriverInky reads from ScenicLocalDriver
 

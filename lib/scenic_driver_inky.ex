@@ -22,6 +22,8 @@ defmodule ScenicDriverInky do
 
   @impl true
   def init(driver, config) do
+    Process.register(self(), __MODULE__)
+    Logger.info("ScenicDriverInky starting pid: #{inspect(self(), pretty: true)}")
     viewport = driver.viewport
     config = config[:opts]
     type = config[:type]
@@ -46,6 +48,8 @@ defmodule ScenicDriverInky do
         true -> @default_refresh_rate
       end
 
+    Logger.info("scenic_driver_inky interval: #{inspect(interval, pretty: true)}")
+
     color_affinity =
       cond do
         config[:color_affinity] in @color_affinity_options -> config[:color_affinity]
@@ -64,8 +68,14 @@ defmodule ScenicDriverInky do
         true -> @default_color_high
       end
 
+    Logger.info("inky type: #{inspect(type, pretty: true)}")
+
     inky_pid =
       case type do
+        :impression_7_3 ->
+          {:ok, pid} = Inky.start_link(type, name: Inky.ScenicDriver)
+          pid
+
         :impression ->
           {:ok, pid} = Inky.start_link(type, name: Inky.ScenicDriver)
           pid
@@ -75,23 +85,29 @@ defmodule ScenicDriverInky do
           pid
       end
 
+    Logger.info("inky_pid: #{inspect(inky_pid, pretty: true)}")
+    Logger.info("viewport: #{inspect(viewport, pretty: true)}")
+
     {width, height} = viewport.size
     {:ok, cap} = RpiFbCapture.start_link(width: width, height: height, display: 0)
 
     send(self(), :capture)
 
-    state = %{
-      viewport: viewport,
-      size: viewport.size,
-      inky_pid: inky_pid,
-      cap: cap,
-      last_crc: -1,
-      dithering: dithering,
-      color_affinity: color_affinity,
-      color_high: color_high,
-      color_low: color_low,
-      interval: interval
-    }
+    state =
+      %{
+        viewport: viewport,
+        size: viewport.size,
+        type: type,
+        inky_pid: inky_pid,
+        cap: cap,
+        last_crc: -1,
+        dithering: dithering,
+        color_affinity: color_affinity,
+        color_high: color_high,
+        color_low: color_low,
+        interval: interval
+      }
+      |> IO.inspect(label: "state (scenic_driver_inky.ex:109)")
 
     driver = assign(driver, :state, state)
 
@@ -102,13 +118,24 @@ defmodule ScenicDriverInky do
   def handle_info(:capture, driver) do
     state = driver.assigns.state
     {:ok, frame} = RpiFbCapture.capture(state.cap, :rgb24)
+    # Logger.info("frame: #{inspect(frame, pretty: true)}")
 
     crc = :erlang.crc32(frame.data)
 
     if crc != state.last_crc do
+      {:ok, frame_ppm} = RpiFbCapture.capture(state.cap, :ppm)
+      # date_str = DateTime.now!("Pacific/Honolulu") |> Calendar.strftime("%Y-%m-%d_%H:%M")
+      File.write("/tmp/capture.ppm", frame_ppm.data)
+
+      Logger.info("frame: #{inspect(frame, pretty: true)}")
       pixel_data = process_pixels(frame.data, state)
 
-      Inky.set_pixels(state.inky_pid, pixel_data)
+      # if state.type in 
+      # pixel_data = fix_pixels(pixel_data)
+
+      Logger.info("Setting pixels!")
+      res = Inky.set_pixels(state.inky_pid, pixel_data)
+      Logger.info("Inky.set_pixels result: #{inspect(res, pretty: true)}")
     end
 
     Process.send_after(self(), :capture, state.interval)
@@ -117,13 +144,31 @@ defmodule ScenicDriverInky do
     {:noreply, driver}
   end
 
-  defp process_pixels(data, %{
+  def handle_info(:clear_crc, driver) do
+    Logger.info("Clearing driver crc")
+    state = %{driver.assigns.state | last_crc: nil}
+    driver = assign(driver, :state, state)
+    {:noreply, driver}
+  end
+
+  defp fix_pixels(pixel_data) do
+    Jax.fix_pixels(pixel_data)
+  end
+
+  def process_pixels(data, %{
+         # I think the width here is incorrect which is throwing everything off
+         # unfortunately this means I need to also adjust my fix
          size: {width, _height},
          dithering: dithering,
          color_high: color_high,
          color_low: color_low,
          color_affinity: color_affinity
        }) do
+    # TODO: We should detect and warn the frame size doesn't match the configured size
+    Logger.info("width: #{inspect(width, pretty: true)}")
+    # Logger.warn("hard-coding width to 720!")
+    # width = 720
+
     pixels = for <<r::8, g::8, b::8 <- data>>, do: {r, g, b}
 
     {_, _, pixel_data} =
