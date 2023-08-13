@@ -131,9 +131,9 @@ defmodule ScenicDriverInky do
       pixel_data = process_pixels(frame.data, state)
 
       # if state.type in 
-      # pixel_data = fix_pixels(pixel_data)
+      pixel_data = fix_pixels(pixel_data)
 
-      Logger.info("Setting pixels!")
+      Logger.info("Setting fixed pixels2!")
       res = Inky.set_pixels(state.inky_pid, pixel_data)
       Logger.info("Inky.set_pixels result: #{inspect(res, pretty: true)}")
     end
