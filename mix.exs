@@ -28,7 +28,9 @@ defmodule ScenicDriverInky.MixProject do
       {:scenic, "~> 0.11"},
       {:scenic_driver_local, "~> 0.11", targets: @pi_targets},
       {:rpi_fb_capture, "~> 0.1", targets: @pi_targets},
-      {:inky, "~> 1.0.0"},
+      # {:inky, "~> 1.0.0"},
+      # {:inky, path: "~/dev/forks/inky"},
+      {:inky, github: "axelson/inky", branch: "jax-working"},
       {:ex_doc, ">= 0.0.0", only: :dev}
     ]
   end

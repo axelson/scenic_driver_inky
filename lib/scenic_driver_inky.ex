@@ -104,15 +104,20 @@ defmodule ScenicDriverInky do
     {:ok, frame} = RpiFbCapture.capture(state.cap, :rgb24)
 
     crc = :erlang.crc32(frame.data)
+    ready = :persistent_term.get(:scenic_driver_inky_ready, false)
 
-    if crc != state.last_crc do
-      pixel_data = process_pixels(frame.data, state)
+    state =
+      if ready && crc != state.last_crc do
+        pixel_data = process_pixels(frame.data, state)
 
-      Inky.set_pixels(state.inky_pid, pixel_data)
-    end
+	Logger.info("JAX #{__MODULE__} calling Inky.set_pixels/2")
+        Inky.set_pixels(state.inky_pid, pixel_data)
+        %{state | last_crc: crc}
+      else
+        state
+      end
 
     Process.send_after(self(), :capture, state.interval)
-    state = %{state | last_crc: crc}
     driver = assign(driver, :state, state)
     {:noreply, driver}
   end
